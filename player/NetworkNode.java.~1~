@@ -1,0 +1,55 @@
+package player;
+
+public class NetworkNode {
+	Coordinate coord;
+	NetworkNode parent;
+	private int lastDirection;  //0 is up/down, 1 is left/right, 2 is upright downleft, 3 is upleft downright
+	private int size = 0;
+	
+	public NetworkNode(Coordinate c) {
+		parent = null;
+		coord = c;
+		size = 1;
+		lastDirection = -1;
+	}
+	
+	public NetworkNode(Coordinate c, NetworkNode parent) {
+		this.parent = parent;
+		coord = c;
+		lastDirection = getDirection(parent.coord, c);
+		size = parent.getSize() + 1;
+	}
+	
+	public int getSize() {
+		return size;
+	}
+	
+	public int getDirection() {
+		return lastDirection;
+	}
+	
+	//c1 is parent, c2 is child
+	public int getDirection(Coordinate c1, Coordinate c2) {
+		int dir;
+		int x1 = c1.x, y1 = c1.y, x2 = c2.x, y2 = c2.y;
+		int xdiff = x2 - x1;
+		int ydiff = y2 - y1;
+		
+		if (xdiff == 0) {
+			dir = 0;
+		}
+		if (ydiff == 0) {
+			dir = 1;
+		}
+		if ((ydiff < 0 && xdiff > 0) || (ydiff > 0 && xdiff < 0)) {
+			dir = 2;
+		}
+		else 
+			dir = 3;
+		
+		
+		return dir;
+	}
+	
+	
+}

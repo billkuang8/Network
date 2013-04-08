@@ -1,0 +1,143 @@
+/* MachinePlayer.java */
+
+package player;
+
+/**
+ *  An implementation of an automatic Network player.  Keeps track of moves
+ *  made by both players.  Can select a move for itself.
+ */
+public class MachinePlayer extends Player {
+
+  protected int color;
+  protected int searchDepth;
+  protected GameState currentState;
+
+  static final boolean DEBUG = true;
+
+  // Creates a machine player with the given color.  Color is either 0 (black)
+  // or 1 (white).  (White has the first move.)
+  public MachinePlayer(int color) {
+    if(color==0) {
+      this.color = GameState.BLACK;
+    } else {
+      this.color = GameState.WHITE;
+    }
+    searchDepth = 1;
+    currentState = new GameState();
+  }
+
+  // Creates a machine player with the given color and search depth.  Color is
+  // either 0 (black) or 1 (white).  (White has the first move.)
+  public MachinePlayer(int color, int searchDepth) {
+    this(color);
+    this.searchDepth = searchDepth;
+  }
+
+  // Returns a new move by "this" player.  Internally records the move (updates
+  // the internal game board) as a move by "this" player.
+  public Move chooseMove() {
+    Move nextMove = minimax();
+    currentState.move(nextMove, color);
+    return nextMove;
+  }
+
+  /**
+   *  minimax() returns the best move as determined by minimax
+   *  @param currentState is the state before the machine player takes
+   *  a turn
+   *  @param depth is the depth the search tree will be expanded to
+   *  @return move determined by minimax algorithm
+   **/
+  protected Move minimax() {
+    debugPrint("minimax start:");
+    Best myBest = maxval(0, GameState.EVALMIN, GameState.EVALMAX); 
+    return myBest.move;
+  }
+
+  protected Best maxval(int depth, double alpha, double beta) {
+    debugPrint("start maxval:");
+    Best myBest = new Best(); 
+    if(currentState.hasValidNetwork(color) || currentState.hasValidNetwork(GameState.opponent(color)) || 
+       depth==searchDepth) {
+      myBest.score = currentState.evaluation(color);
+      debugPrint("maxval end: "+myBest.score);
+      return myBest;
+    }
+    SList possibleMoves = currentState.validMoves(color);
+    debugPrint("valid moves: "+possibleMoves);
+    myBest.score = GameState.EVALMIN;
+    SListNode currentNode = possibleMoves.front();
+    for(int i = 0; i<possibleMoves.length(); i++) {
+      Move currentMove = (Move) currentNode.item;
+      currentState.move(currentMove, color);
+      double val = minval(depth,alpha,beta);
+      currentState.unmove(currentMove, color);
+      if(val > myBest.score) {
+	myBest.score = val;
+	myBest.move = currentMove;
+      }
+      if(myBest.score >= beta) {
+	return myBest;
+      }
+      if(myBest.score > alpha) {
+	alpha = myBest.score;
+      }
+      currentNode=currentNode.next;
+    }
+    debugPrint("maxval return after search: "+myBest.score);
+    return myBest;
+  }
+
+  protected double minval(int depth, double alpha, double beta)  {
+    debugPrint("start minval:");
+    if(currentState.hasValidNetwork(color) || currentState.hasValidNetwork(GameState.opponent(color))) {
+      return currentState.evaluation(color);
+    }
+    SList possibleMoves = currentState.validMoves(color);
+    double minVal = GameState.EVALMAX;
+    SListNode currentNode = possibleMoves.front();
+    for(int i = 0; i<possibleMoves.length(); i++) {
+      Move currentMove = (Move) currentNode.item;
+      currentState.move(currentMove, color);
+      Best theBest = maxval(depth+1,alpha,beta);
+      double val = theBest.score;
+      currentState.unmove(currentMove, color);
+      if(val < minVal) {
+	minVal = val;
+      }
+      if(minVal <= alpha) {
+	return minVal;
+      }
+      if(minVal < beta) {
+	beta = minVal;
+      }
+      currentNode = currentNode.next;
+    }
+    return minVal;
+  }
+
+  // If the Move m is legal, records the move as a move by the opponent
+  // (updates the internal game board) and returns true.  If the move is
+  // illegal, returns false without modifying the internal state of "this"
+  // player.  This method allows your opponents to inform you of their moves.
+  public boolean opponentMove(Move m) {
+    return currentState.move(m, GameState.opponent(color));
+  }
+
+  // If the Move m is legal, records the move as a move by "this" player
+  // (updates the internal game board) and returns true.  If the move is
+  // illegal, returns false without modifying the internal state of "this"
+  // player.  This method is used to help set up "Network problems" for your
+  // player to solve.
+  public boolean forceMove(Move m) {
+    return currentState.move(m, color);
+  }
+
+  public static void debugPrint(String s) {
+    if(DEBUG) {
+      System.out.println(s);
+    }
+  }
+
+
+}

@@ -1,0 +1,29 @@
+package player;
+
+/* Board.java */
+
+public class Board {
+    
+    private int[][] gameBoard;
+    
+    public Board() {
+   	 gameBoard = new int[8][8];
+    }
+    
+    public int squareContents(int x, int y) {
+   	 return gameBoard[x][y];
+    }
+    
+    public int squareContents(Coordinate c) {
+   	 return gameBoard[c.x][c.y];
+    }
+
+   public void set(int x, int y, int content) {
+	gameBoard[x][y] = content;
+   }
+
+   public void set(Coordinate c, int content) {
+	gameBoard[c.x][c.y] = content;
+   }
+}
+

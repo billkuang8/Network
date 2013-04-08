@@ -1,0 +1,229 @@
+/* MachinePlayer.java */
+
+package player;
+
+/**
+ *  An implementation of an automatic Network player.  Keeps track of moves
+ *  made by both players.  Can select a move for itself.
+ */
+public class MachinePlayer extends Player {
+
+  protected int color;
+  protected int searchDepth;
+  protected GameState currentState;
+
+  static final int DEFAULTDEPTH = 2;
+  static final double DECAY = .1;
+
+  static final boolean DEBUG = false;
+
+  // Creates a machine player with the given color.  Color is either 0 (black)
+  // or 1 (white).  (White has the first move.)
+  public MachinePlayer(int color) {
+    if(color==0) {
+      this.color = GameState.BLACK;
+    } else {
+      this.color = GameState.WHITE;
+    }
+    searchDepth = DEFAULTDEPTH;
+    currentState = new GameState();
+  }
+
+  // Creates a machine player with the given color and search depth.  Color is
+  // either 0 (black) or 1 (white).  (White has the first move.)
+  public MachinePlayer(int color, int searchDepth) {
+    this(color);
+    this.searchDepth = searchDepth;
+  }
+
+  /**
+   * chooseMove() returns a new move by 'this' player. Internally records the move (updates the internal game board) as a move by 'this' player
+   * @return the chosen Move
+   **/
+  public Move chooseMove() {
+    Move nextMove = minimax();
+    currentState.move(nextMove, color);
+    return nextMove;
+  }
+
+  /**
+   *  minimax() returns the best move as determined by minimax
+   *  @param currentState is the state before the machine player takes
+   *  a turn
+   *  @param depth is the depth the search tree will be expanded to
+   *  @return move determined by minimax algorithm
+   **/
+  protected Move minimax() {
+    debugPrint("minimax start:");
+    Best myBest = maxval(-1, GameState.EVALMIN-1, GameState.EVALMAX+1); 
+    debugPrint("minimax end: " + myBest.move); 
+    return myBest.move;
+  }
+
+  /**
+   * maxval() evaluates the current games state and returns a Best object, holding a score and a move. 
+   * @param depth represents the depth in the the tree that this call is function
+   * @param alpha represents the value of the best alternative for max nodes along the path to state
+   * @param beta represents the value of the best alternative for min nodes along the path to state
+   * @return a Best object containing the max score possible and the corresponding move that generates that score
+   **/
+  protected Best maxval(int depth, double alpha, double beta) {
+    debugPrint("start maxval: ( "+alpha+" , "+beta+" )  "+depth );
+    Best myBest = new Best(); 
+    if(currentState.hasValidNetwork(color) ||
+       currentState.hasValidNetwork(GameState.opponent(color)) || 
+       depth==searchDepth) {
+      myBest.score = currentState.evaluation(color);
+      debugPrint("maxval end by depth or win: "+myBest.score);
+      if(depth == 0) { // should never happen return default move
+	SList possibleMoves = currentState.validMoves(color);
+	SListNode firstNode = possibleMoves.front();
+	Move firstMove = (Move) firstNode.item;
+	myBest.move = firstMove;
+	debugPrint("GAAAAAHHHHHHHHH");
+      }
+      return myBest;
+    }
+    SList possibleMoves = currentState.validMoves(color);
+    debugPrint("valid moves: "+possibleMoves);
+    myBest.score = GameState.EVALMIN-1;
+    SListNode currentNode = possibleMoves.front();
+    for(int i = 0; i<possibleMoves.length(); i++) {
+      Move currentMove = (Move) currentNode.item;
+      debugPrint("considering move: "+currentMove);
+      debugPrint("original state:\n"+currentState);
+      currentState.move(currentMove, color);
+      debugPrint("after move:\n"+currentState);
+      double val = minval(depth+1,alpha,beta);
+      currentState.unmove(currentMove, color);
+      debugPrint("after unmove:\n"+currentState);
+      if(val > myBest.score) {
+	myBest.score = val;
+	myBest.move = currentMove;
+	debugPrint("this is the new best move: "+val);
+      }
+      if(myBest.score >= beta) {
+	debugPrint("alpha beta truncation: "+myBest.score);
+	return myBest;
+      }
+      if(myBest.score > alpha) {
+	alpha = myBest.score;
+	debugPrint("alpha update: "+alpha);
+      }
+      currentNode=currentNode.next;
+    }
+    if(myBest.score == GameState.EVALMAX) {
+      myBest.score-=DECAY;
+    }
+    debugPrint("maxval return after search: "+myBest.score);
+    return myBest;
+  }
+
+  /**
+   * minval() evaluates the current games state and returns the minimum score
+   * @param depth represents the depth in the the tree that this call is function
+   * @param alpha represents the value of the best alternative for max nodes along the path to state
+   * @param beta represents the value of the best alternative for min nodes along the path to state
+   * @return the minimum score found by enumerating moves of the given state
+   **/
+  protected double minval(int depth, double alpha, double beta)  {
+    debugPrint("start minval: ( "+alpha+" , "+beta+" )  "+depth);
+    if(currentState.hasValidNetwork(color) ||
+       currentState.hasValidNetwork(GameState.opponent(color)) || 
+       depth==searchDepth) {
+      debugPrint("end minval by valid network or search depth");
+      return currentState.evaluation(color);
+    }
+    SList possibleMoves = currentState.validMoves(GameState.opponent(color));
+    //debugPrint("valid moves: "+possibleMoves);
+    double minVal = GameState.EVALMAX;
+    SListNode currentNode = possibleMoves.front();
+    for(int i = 0; i<possibleMoves.length(); i++) {
+      Move currentMove = (Move) currentNode.item;
+      //debugPrint("considering move: "+currentMove);
+      //debugPrint("original state:\n"+currentState);
+      currentState.move(currentMove, GameState.opponent(color));
+      //debugPrint("after move:\n"+currentState);
+      Best theBest = maxval(depth+1,alpha,beta);
+      double val = theBest.score;
+      currentState.unmove(currentMove, GameState.opponent(color));
+      //debugPrint("after unmove:\n"+currentState);
+      if(val < minVal) {
+	minVal = val;
+	//debugPrint("this is the new best move: "+val);
+      }
+      if(minVal <= alpha) {
+	debugPrint("alpha beta truncation: "+minVal);
+	return minVal;
+      }
+      if(minVal < beta) {
+	beta = minVal;
+	//debugPrint("beta update: "+beta);
+      }
+      currentNode = currentNode.next;
+    }
+    //debugPrint("valid moves: "+possibleMoves);
+    debugPrint("minval return after search: " + minVal);
+    if(minVal == GameState.EVALMIN) {
+      minVal+= DECAY;
+    }
+    return minVal;
+  }
+
+  // If the Move m is legal, records the move as a move by the opponent
+  // (updates the internal game board) and returns true.  If the move is
+  // illegal, returns false without modifying the internal state of "this"
+  // player.  This method allows your opponents to inform you of their moves.
+  public boolean opponentMove(Move m) {
+    return currentState.move(m, GameState.opponent(color));
+  }
+
+  // If the Move m is legal, records the move as a move by "this" player
+  // (updates the internal game board) and returns true.  If the move is
+  // illegal, returns false without modifying the internal state of "this"
+  // player.  This method is used to help set up "Network problems" for your
+  // player to solve.
+  public boolean forceMove(Move m) {
+    return currentState.move(m, color);
+  }
+
+ 
+  /**
+   * debugPrint() will print out the given string if DEBUG is true
+   * for debugging purposes only
+   **/
+  public static void debugPrint(String s) {
+    if(DEBUG) {
+      System.out.println(s);
+    }
+  }
+
+  //for debugging purposes only
+  public static void main(String args[]) {
+    MachinePlayer robot = new MachinePlayer(1);
+    robot.forceMove(new Move(0,2));
+    robot.opponentMove(new Move(1,1));
+    robot.forceMove(new Move(1,2));
+    robot.opponentMove(new Move(2,1));
+    robot.forceMove(new Move(4,2));
+    robot.opponentMove(new Move(4,1));
+    robot.forceMove(new Move(1,5));
+    robot.opponentMove(new Move(5,1));
+    robot.forceMove(new Move(4,5));
+    robot.opponentMove(new Move(1,6));
+    System.out.println(robot.currentState);
+    System.out.println("eval: "+robot.currentState.evaluation(GameState.WHITE));
+    Move theMove = robot.chooseMove();
+    System.out.println("the robot chooses: "+theMove);
+    System.out.println("(it usually chooses [add to 76])");
+    System.out.println("eval: "+robot.currentState.evaluation(GameState.WHITE));
+    robot.currentState.unmove(theMove, GameState.WHITE);
+    System.out.println("unmove");
+    SList possibleMoves = robot.currentState.validMoves(GameState.WHITE);
+    System.out.println(possibleMoves);
+    robot.forceMove(new Move(7,5));
+    System.out.println(robot.currentState);
+    System.out.println("eval: "+robot.currentState.evaluation(GameState.WHITE));
+  }
+
+}

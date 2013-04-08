@@ -1,0 +1,84 @@
+package player;
+
+/* Board.java */
+
+/**
+ * The Board class is an int array representation of a game board.
+ * The board can be of any dimension, although by default it is of length 8
+**/
+
+public class Board {
+    
+    private int[][] gameBoard;
+  private int BOARDLENGTH = GameState.BOARDLENGTH;
+
+  //constructs a game board
+    public Board() {
+         
+   	 gameBoard = new int[BOARDLENGTH][BOARDLENGTH];
+    }
+
+/**
+ * squareContents() takes x- and y-coordinates for a board and
+ * returns an int representation of the chip found at that position
+ * (BLACK or WHITE) found at that position on the board.
+ * @param x  is the x-coordinate on the board.
+ * @param y is the y-coordintate on the board.
+ * @return an int representation of a chip (BLACK of WHITE) or EMPTY.
+ **/    
+    public int squareContents(int x, int y) {
+   	 return gameBoard[x][y];
+    }
+    
+/**
+ * squareContents() takes a Coordinate object and returns an int
+ * representing the color chip found at the coordinates on the board.
+ * @param c is the Coordinate on the board.
+ * @return an integer representing a color on the board (BLACK, WHITE, or EMPTY)
+**/
+    public int squareContents(Coordinate c) {
+   	 return gameBoard[c.x][c.y];
+    }
+/**
+ * set() takes x and y coordinates and a color in the form of an integer, and sets that color to those coordinates on the board
+ * @param x is the x-coordinate
+ * @param y is the y-coordinate
+ * @param content is color of the chip, as a number
+**/
+
+   public void set(int x, int y, int content) {
+	gameBoard[x][y] = content;
+   }
+
+/**
+ * set() takes a Coordinate object and a color in the form of an integer, and sets that color to those coordinates on the board
+ * @param c is the Coordinate on the board
+ * @param content is color of the chip, as a number
+**/
+   public void set(Coordinate c, int content) {
+	gameBoard[c.x][c.y] = content;
+   }
+
+/**
+ * toString() converts a a board into a String representation of the board.
+ * @return String representation of the board
+**/
+  public String toString() {
+    String ret = "";
+    for(int j=0; j<BOARDLENGTH; j++) {
+      ret+="|";
+      for(int i=0; i<BOARDLENGTH; i++) {
+	if(gameBoard[i][j]==GameState.BLACK) {
+	  ret+=" B ";
+	} else if(gameBoard[i][j]==GameState.WHITE) {
+	  ret+=" W ";
+	} else {
+	  ret+="   ";
+	}
+      }
+      ret+="|\n\n";
+    }
+    return ret;
+  }
+}
+

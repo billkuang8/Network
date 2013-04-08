@@ -1,0 +1,437 @@
+package player;
+
+/* GameState.java */
+
+public class GameState {
+
+  final static int BLACK = -1;
+  final static int EMPTY = 0;
+  final static int WHITE = 1;
+
+  final static int BOARDLENGTH = 8;
+
+  final static double EVALMIN = 0;
+  final static double EVALMAX = 100;
+
+  Board gameBoard;
+  protected int blackCount;
+  protected int whiteCount;
+
+  public GameState() {
+    gameBoard = new Board();
+    blackCount = 0;
+    whiteCount = 0;
+  }
+
+  /**
+   * evaluation() returns a double that is a representation of how good the
+   * state is for the player indicated by side
+   * 
+   * @return double of calculated evaluation function of the game state
+   **/
+  public double evaluation(int side) {
+    double myEval1 = networkLength(side, startingNodes(side), true);
+    double myEval2 = networkLength(side, endingNodes(side), false);
+    double enemyEval1 = networkLength(opponent(side),
+				      startingNodes(opponent(side)), true);
+    double enemyEval2 = networkLength(opponent(side),
+				      endingNodes(opponent(side)), false);
+    if (myEval1 == -1) {
+      return EVALMAX;
+    }
+    if (enemyEval1 == -1) {
+      return EVALMIN;
+    }
+    // we need to do more calculations here
+    
+    double d = 50.0 + 5 * myEval1 + 5 * myEval2 - 4.5 * enemyEval1 - 4.5 * enemyEval2;
+
+    System.out.println(d);
+
+    return d;
+  }
+
+  public static int opponent(int side) {
+    if (side == BLACK) {
+      return WHITE;
+    } else {
+      return BLACK;
+    }
+  }
+
+
+  public boolean move(Move m, int side) {
+    if (m.moveKind == Move.QUIT || !isValidMove(m, side)) {
+      return false;
+    }
+    if (m.moveKind == Move.STEP) {
+      gameBoard.set(m.x2, m.y2, EMPTY);
+    }
+    if (m.moveKind == Move.ADD) {
+      if (side == BLACK) {
+	blackCount++;
+      } else {
+	whiteCount++;
+      }
+    }
+    gameBoard.set(m.x1, m.y1, side);
+    return true;
+  }
+
+  public boolean unmove(Move m, int side) {
+    if (m.moveKind == Move.QUIT) {
+      return false;
+    } else if (m.moveKind == Move.ADD) {
+      if (gameBoard.squareContents(m.x1, m.y1) != side) {
+	System.out.println("false");
+
+	return false;
+      } else {
+	if (side == BLACK) {
+	  blackCount--;
+	} else {
+	  whiteCount--;
+	}
+	gameBoard.set(m.x1, m.y1, EMPTY);
+	return true;
+      }
+    } else { // STEP
+      return move(new Move(m.x2, m.y2, m.x1, m.y1), side);
+    }
+  }
+
+  protected boolean isValidMove(Move m, int side) {
+    int x = m.x1;
+    int y = m.y1;
+
+    if (m.moveKind == Move.QUIT) {
+      return false;
+    }
+    if (m.moveKind == Move.STEP) {
+      if (gameBoard.squareContents(m.x2, m.y2) != side) {
+	return false;
+      }
+    }
+    if (wrongGoal(x, y, side)) {
+      return false;
+    }
+    if (gameBoard.squareContents(x, y) != EMPTY) {
+      return false;
+    }
+    if (m.moveKind == Move.STEP) {
+      gameBoard.set(m.x2, m.y2, EMPTY);
+    }
+    if (hasCluster(x, y, side)) {
+      if (m.moveKind == Move.STEP) {
+	gameBoard.set(m.x2, m.y2, side);
+      }
+      return false;
+    } else {
+      if (m.moveKind == Move.STEP) {
+	gameBoard.set(m.x2, m.y2, side);
+      }
+      return true;
+    }
+  }
+
+  protected boolean isCorner(int x, int y) {
+    if ((x == 0 && y == 0) || (x == 7 && y == 0) || (x == 0 && y == 7)
+	|| (x == 7 && y == 7)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  protected boolean wrongGoal(int x, int y, int side) {
+    if (side == BLACK) {
+      if (x == 0) {
+	return true;
+      }
+      if (x == 7) {
+	return true;
+      }
+    } else if (side == WHITE) {
+      if (y == 0) {
+	return true;
+      }
+      if (y == 7) {
+	return true;
+      }
+    }
+    return false;
+  }
+
+  protected boolean hasCluster(int x, int y, int side) {
+    SList adjacents = findAdjacents(x, y, side);
+    if (adjacents.length() >= 2) {
+      return true;
+    } else if (adjacents.length() == 1) {
+      int x1 = ((Coordinate) adjacents.nth(1)).x;
+      int y1 = ((Coordinate) adjacents.nth(1)).y;
+
+      if (hasAdjacents(x1, y1, side)) {
+	return true;
+      } else {
+	return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  protected SList findAdjacents(int x, int y, int side) {
+    SList adjacents = new SList();
+    for (int i = x - 1; i <= x + 1; i++) {
+      for (int j = y - 1; j <= y + 1; j++) {
+	if (i >= 0 && j >= 0 && i <= 7 && j <= 7) {
+	  if (i == x && j == y) {
+	    continue;
+	  } else if (gameBoard.squareContents(i, j) == side) {
+	    Coordinate c = new Coordinate(i, j);
+	    adjacents.insertFront(c);
+	  }
+	}
+      }
+    }
+    return adjacents;
+  }
+
+  protected boolean hasAdjacents(int x, int y, int side) {
+    return !findAdjacents(x, y, side).isEmpty();
+  }
+
+  protected SList validMoves(int side) {
+    boolean isStep = false;
+    if ((side == BLACK && blackCount == 10)
+	|| (side == WHITE && whiteCount == 10)) {
+      isStep = true;
+    }
+    SList current = new SList();
+    if (isStep) {
+      for (int i = 0; i < 8; i++) {
+	for (int j = 0; j < 8; j++) {
+	  if (gameBoard.squareContents(i, j) == side) {
+	    current.insertFront(new Coordinate(i, j));
+	  }
+	}
+      }
+    }
+    SList moves = new SList();
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+	Move m = new Move(i, j);
+	if (isValidMove(m, side)) {
+	  if (!isStep) {
+	    moves.insertFront(m);
+	  } else {
+	    SListNode currentNode = current.front();
+	    for (int k = 0; k < 10; k++) {
+	      Coordinate c = (Coordinate) currentNode.item;
+	      moves.insertFront(new Move(i, j, c.x, c.y));
+	      currentNode = currentNode.next;
+	    }
+	  }
+	}
+      }
+    }
+    // check 24 spaces around each current position
+    if (isStep) {
+      SListNode currentNode = current.front();
+      for (int k = 0; k < 10; k++) {
+	Coordinate c = (Coordinate) currentNode.item;
+	moves = validStepMoves(c, side, moves);
+	currentNode = currentNode.next;
+      }
+    }
+    return moves;
+  }
+
+  protected SList validStepMoves(Coordinate c, int side, SList moves) {
+    for (int i = c.x - 2; i <= c.x + 2; i++) {
+      for (int j = c.y - 2; j <= c.y + 2; j++) {
+	if (i >= 0 && j >= 0 && i <= 7 && j <= 7) {
+	  Move m = new Move(i, j, c.x, c.y);
+	  if (isValidMove(m, side)) {
+	    moves.insertFront(m);
+	  }
+	}
+      }
+    }
+    return moves;
+  }
+
+  /**
+   * networkNeighbors() returns an SList of NetworkNode Objects that are in a
+   * network with the given Coordinate. Checks what color is at the parent. If
+   * there is no piece there, behavior of method is undefined.
+   * 
+   * @param parent
+   *            is NetworkNode on board
+   **/
+  protected SList networkNeighbors(NetworkNode parent) {
+    SList sl = new SList();
+    Coordinate c = parent.coord;
+    int xOfC = c.x;
+    int yOfC = c.y;
+    int side = gameBoard.squareContents(c);
+    int oppSide = opponent(side);
+
+    // start going directly north, then go counter-clockwise
+    int[] dx = { 0, -1, -1, -1, 0, 1, 1, 1 };
+    int[] dy = { -1, -1, 0, 1, 1, 1, 0, -1 };
+
+    for (int dir = 0; dir < 8; dir++) {
+      int x = xOfC, y = yOfC;
+
+      x += dx[dir];
+      y += dy[dir];
+
+      while (x < 8 && x >= 0 && y < 8 && y >= 0
+	     && gameBoard.squareContents(x, y) != oppSide) {
+
+	if (gameBoard.squareContents(x, y) == side) {
+	  NetworkNode newN = new NetworkNode(new Coordinate(x, y),
+					     parent);
+	  sl.insertEnd(newN);
+	  break;
+	}
+
+	x += dx[dir];
+	y += dy[dir];
+
+      }
+    }
+    //System.out.println(sl.toString());
+    return sl;
+  }
+
+  /**
+   * hasValidNetwork() determines if Board has a valid network. if side !=
+   * MachinePlayer.COMPUTER || MachinePlayer.OPPONENT return false.
+   * 
+   * @param side
+   *            is MachinePlayer.COMPUTER || MachinePlayer.OPPONENT
+   * @return true if player side has winning network in this board, and false
+   *         otherwise.
+   **/
+  public boolean hasValidNetwork(int side) {
+    SList fringe = startingNodes(side);
+    while (!fringe.isEmpty()) {
+      NetworkNode parentNode = (NetworkNode) fringe.front().item;
+      fringe.removeFront();
+      SList neighbors = networkNeighbors(parentNode);
+      SListNode currentNode = neighbors.front();
+      for (int i = 0; i < neighbors.length(); i++) {
+	NetworkNode currentNetNode = (NetworkNode) currentNode.item;
+	if (currentNetNode.getSize() >= 6 && isInGoal(currentNetNode)) {
+	  return true;
+	} else if (currentNetNode.getDirection() != currentNetNode.parent.getDirection()
+		   && !alreadyVisited(currentNetNode)) {
+	  fringe.insertFront(currentNetNode);
+	}
+	currentNode = currentNode.next;
+      }
+    }
+    return false;
+  }
+
+  // returns true if the last coordinate in nn is already been visited
+  protected boolean alreadyVisited(NetworkNode nn) {
+    Coordinate c = nn.coord;
+    while (nn.parent != null) {
+      nn = nn.parent;
+      Coordinate testC = nn.coord;
+      if (c.x == testC.x && c.y == testC.y) {
+	return true;
+      }
+    }
+    return false;
+  }
+
+  // isInGoal(NetworkNode nn) returns boolean, checks right and bottom sides
+  // for last piece
+  protected boolean isInGoal(NetworkNode nn) {
+    Coordinate c = nn.coord;
+
+    if (c.x == 7 || c.y == 7) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  protected int networkLength(int side, SList fringe, boolean starting) {
+    int maxLength = 0;
+    while (!fringe.isEmpty()) {
+      NetworkNode parentNode = (NetworkNode) fringe.front().item;
+      fringe.removeFront();
+      SList neighbors = networkNeighbors(parentNode);
+      SListNode currentNode = neighbors.front();
+      if (maxLength < parentNode.getSize()) {
+	maxLength = parentNode.getSize();
+      }
+      for (int i = 0; i < neighbors.length(); i++) {
+	NetworkNode currentNetNode = (NetworkNode) currentNode.item;
+	if (currentNetNode.getSize() >= 6 && starting
+	    && isInGoal(currentNetNode)) {
+	  return -1;
+	} else if (currentNetNode.getDirection() != currentNetNode.parent.getDirection()
+		   && !alreadyVisited(currentNetNode)) {
+	  fringe.insertFront(currentNetNode);
+	}
+	currentNode = currentNode.next;
+      }
+    }
+    return maxLength;
+  }
+
+  protected SList startingNodes(int side) {
+    int[] x = new int[BOARDLENGTH];
+    int[] y = new int[BOARDLENGTH];
+    SList ret = new SList();
+    if (side == BLACK) {
+      for (int i = 0; i < BOARDLENGTH; i++) {
+	x[i] = i;
+	y[i] = 0;
+      }
+    } else {// side==WHITE
+      for (int i = 0; i < BOARDLENGTH; i++) {
+	x[i] = 0;
+	y[i] = i;
+      }
+    }
+    for (int i = 0; i < BOARDLENGTH; i++) {
+      if (gameBoard.squareContents(x[i], y[i]) == side) {
+	NetworkNode temp = new NetworkNode(new Coordinate(x[i], y[i]));
+	ret.insertFront(temp);
+      }
+    }
+    return ret;
+  }
+
+  protected SList endingNodes(int side) {
+    int[] x = new int[BOARDLENGTH];
+    int[] y = new int[BOARDLENGTH];
+    SList ret = new SList();
+    if(side == BLACK) {
+      for(int i=0;i<BOARDLENGTH;i++) {
+	x[i]=i;
+	y[i]=BOARDLENGTH-1;
+      }
+    } else {//side==WHITE
+      for(int i=0;i<BOARDLENGTH;i++) {
+	x[i]=BOARDLENGTH-1;
+	y[i]=i;
+      }
+    }
+    for(int i=0;i<BOARDLENGTH;i++) {
+      if(gameBoard.squareContents(x[i],y[i])==side) {
+	NetworkNode temp = new NetworkNode(new Coordinate(x[i],y[i]));
+	ret.insertFront(temp);
+      }
+    }
+    return ret;
+  }
+
+}

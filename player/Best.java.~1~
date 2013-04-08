@@ -1,0 +1,12 @@
+/* Best.java */
+
+/**
+*  allows minimax to return a score and a move
+*/
+
+package player;
+
+public class Best {
+  Move move;
+  double score;
+}

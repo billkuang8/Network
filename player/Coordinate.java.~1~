@@ -1,0 +1,15 @@
+package player;
+
+
+public class Coordinate {
+    
+    public int x;
+    public int y;
+    public int dirX = 0;  //if coordinate comes from a network 
+    public int dirY = 0;  
+    
+    public Coordinate(int x, int y) {
+   	 this.x = x;
+   	 this.y = y;
+    }
+}
